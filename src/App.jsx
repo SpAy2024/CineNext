@@ -1,13 +1,25 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { HashRouter } from 'react-router-dom';  
-import App from './App';
-import './index.css';
+asi esta App.jsx import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import { MovieProvider } from './context/MovieContext';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import MovieDetail from './pages/MovieDetail';
+import Admin from './pages/Admin';
+import './App.css';
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <HashRouter>  {/* ← SIN basename */}
-      <App />
-    </HashRouter>
-  </React.StrictMode>
-);
+function App() {
+  return (
+    <MovieProvider>
+      <div className="app">
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/movie/:id" element={<MovieDetail />} />
+          <Route path="/admin" element={<Admin />} />
+        </Routes>
+      </div>
+    </MovieProvider>
+  );
+}
+
+export default App;
