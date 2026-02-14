@@ -6,11 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-   "prebuild": "rm -rf dist .vite || true",
-    "build": "vite build",
+    "prebuild": "rm -rf dist .vite || true",
+    "build": "vite build && cp dist/index.html dist/404.html",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview"
-     "predeploy": "npm run build",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
