@@ -1,24 +1,26 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
-import { MovieProvider } from './context/MovieContext';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import MovieDetail from './pages/MovieDetail';
-import Admin from './pages/Admin';
-import './App.css';
 
 function App() {
   return (
-    <MovieProvider>
-      <div className="app">
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/movie/:id" element={<MovieDetail />} />
-          <Route path="/admin" element={<Admin />} />
-        </Routes>
-      </div>
-    </MovieProvider>
+    <div style={{
+      background: '#141414',
+      color: '#e50914',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: '2rem',
+      fontFamily: 'Arial, sans-serif'
+    }}>
+      <h1>🎬 CINENEXT</h1>
+      <p style={{ color: 'white', fontSize: '1.2rem' }}>
+        ¡React funciona correctamente!
+      </p>
+      <p style={{ color: '#666', fontSize: '1rem', marginTop: '20px' }}>
+        Versión de React: {React.version}
+      </p>
+    </div>
   );
 }
 
