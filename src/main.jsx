@@ -7,7 +7,7 @@ import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter
+    <HashRouter
       basename="/CineNext" 
       future={{
         v7_startTransition: true,
@@ -15,6 +15,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       }}
     >
       <App />
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 );
