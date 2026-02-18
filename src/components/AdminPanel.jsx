@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext } from 'react';
 import { MovieContext } from '../context/MovieContext';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -43,9 +43,16 @@ const AdminPanel = () => {
       setNotification({ type: 'error', message: 'Ingresa un ID de TMDB' });
       return;
     }
+
+    // Validar que sea un número
+    if (isNaN(formData.tmdbId)) {
+      setNotification({ type: 'error', message: 'El ID debe ser un número válido' });
+      return;
+    }
     
     setLoading(true);
     setNotification(null);
+    setSearchResult(null);
     
     try {
       // Intentar como película
@@ -67,32 +74,36 @@ const AdminPanel = () => {
         setLoading(false);
         return;
       } catch (movieError) {
-        // Intentar como serie
-        const tvResponse = await axios.get(
-          `${import.meta.env.VITE_TMDB_BASE_URL}/tv/${formData.tmdbId}?api_key=${import.meta.env.VITE_TMDB_KEY}&language=es-MX`
-        );
-        setSearchType('tv');
-        setSearchResult({ type: 'tv', data: tvResponse.data });
-        setFormData(prev => ({
-          ...prev,
-          title: tvResponse.data.name,
-          overview: tvResponse.data.overview,
-          posterPath: tvResponse.data.poster_path,
-          backdropPath: tvResponse.data.backdrop_path,
-          vote_average: tvResponse.data.vote_average,
-          release_date: tvResponse.data.first_air_date
-        }));
-        setLoading(false);
+        // Si no es película, intentar como serie
+        try {
+          const tvResponse = await axios.get(
+            `${import.meta.env.VITE_TMDB_BASE_URL}/tv/${formData.tmdbId}?api_key=${import.meta.env.VITE_TMDB_KEY}&language=es-MX`
+          );
+          setSearchType('tv');
+          setSearchResult({ type: 'tv', data: tvResponse.data });
+          setFormData(prev => ({
+            ...prev,
+            title: tvResponse.data.name,
+            overview: tvResponse.data.overview,
+            posterPath: tvResponse.data.poster_path,
+            backdropPath: tvResponse.data.backdrop_path,
+            vote_average: tvResponse.data.vote_average,
+            release_date: tvResponse.data.first_air_date
+          }));
+          setLoading(false);
+        } catch (tvError) {
+          setNotification({ type: 'error', message: 'Contenido no encontrado en TMDB' });
+          setLoading(false);
+        }
       }
     } catch (error) {
-      setNotification({ type: 'error', message: 'Contenido no encontrado en TMDB' });
-    } finally {
+      setNotification({ type: 'error', message: 'Error en la búsqueda' });
       setLoading(false);
     }
   };
 
   const searchTMDBByTitle = async () => {
-    if (!formData.searchTitle) {
+    if (!formData.searchTitle || formData.searchTitle.trim() === '') {
       setNotification({ type: 'error', message: 'Ingresa un título para buscar' });
       return;
     }
@@ -100,6 +111,7 @@ const AdminPanel = () => {
     setLoading(true);
     setNotification(null);
     setTitleSearchResults([]);
+    setShowTitleResults(false);
     
     try {
       // Buscar películas
@@ -151,7 +163,7 @@ const AdminPanel = () => {
       overview: item.overview,
       posterPath: item.poster_path,
       backdropPath: item.backdrop_path,
-      vote_average: item.vote_average,
+      vote_average: item.vote_average || 0,
       release_date: item.release_date
     }));
     setShowTitleResults(false);
@@ -166,6 +178,11 @@ const AdminPanel = () => {
       return;
     }
 
+    if (!searchResult) {
+      setNotification({ type: 'error', message: 'Debes buscar y seleccionar un contenido primero' });
+      return;
+    }
+
     addCustomMovie({
       ...formData,
       id: Date.now(),
@@ -174,14 +191,39 @@ const AdminPanel = () => {
     });
 
     setNotification({ type: 'success', message: 'Contenido agregado exitosamente' });
+    
+    // Limpiar formulario
     setFormData({
-      tmdbId: '', searchTitle: '', genre: '', contentType: '', title: '', overview: '',
-      posterPath: '', backdropPath: '', vote_average: 0, release_date: ''
+      tmdbId: '', 
+      searchTitle: '', 
+      genre: '', 
+      contentType: '', 
+      title: '', 
+      overview: '',
+      posterPath: '', 
+      backdropPath: '', 
+      vote_average: 0, 
+      release_date: ''
     });
     setSearchResult(null);
     setTitleSearchResults([]);
     setShowTitleResults(false);
+    
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleModeChange = (mode) => {
+    setSearchMode(mode);
+    // Limpiar todo al cambiar de modo
+    setFormData({
+      ...formData,
+      tmdbId: '',
+      searchTitle: '',
+    });
+    setSearchResult(null);
+    setTitleSearchResults([]);
+    setShowTitleResults(false);
+    setNotification(null);
   };
 
   const getSectionTitle = () => {
@@ -202,13 +244,22 @@ const AdminPanel = () => {
           <h2>CINEMA<span>ADMIN</span></h2>
         </div>
         <nav className="sidebar-nav">
-          <button className={activeSection === 'dashboard' ? 'active' : ''} onClick={() => setActiveSection('dashboard')}>
+          <button 
+            className={activeSection === 'dashboard' ? 'active' : ''} 
+            onClick={() => setActiveSection('dashboard')}
+          >
             <span className="nav-icon">📊</span> Dashboard
           </button>
-          <button className={activeSection === 'add' ? 'active' : ''} onClick={() => setActiveSection('add')}>
+          <button 
+            className={activeSection === 'add' ? 'active' : ''} 
+            onClick={() => setActiveSection('add')}
+          >
             <span className="nav-icon">➕</span> Agregar Contenido
           </button>
-          <button className={activeSection === 'library' ? 'active' : ''} onClick={() => setActiveSection('library')}>
+          <button 
+            className={activeSection === 'library' ? 'active' : ''} 
+            onClick={() => setActiveSection('library')}
+          >
             <span className="nav-icon">🎥</span> Filmoteca
             <span className="nav-badge">{customMovies.length}</span>
           </button>
@@ -224,7 +275,11 @@ const AdminPanel = () => {
       <div className="dashboard-main">
         <header className="dashboard-header">
           <h1>{getSectionTitle()}</h1>
-          {notification && <div className={`notification ${notification.type}`}>{notification.message}</div>}
+          {notification && (
+            <div className={`notification ${notification.type}`}>
+              {notification.message}
+            </div>
+          )}
         </header>
 
         {/* Dashboard Section */}
@@ -273,13 +328,15 @@ const AdminPanel = () => {
               <div className="search-mode-selector">
                 <button 
                   className={`mode-btn ${searchMode === 'id' ? 'active' : ''}`}
-                  onClick={() => setSearchMode('id')}
+                  onClick={() => handleModeChange('id')}
+                  type="button"
                 >
                   🔍 Buscar por ID
                 </button>
                 <button 
                   className={`mode-btn ${searchMode === 'title' ? 'active' : ''}`}
-                  onClick={() => setSearchMode('title')}
+                  onClick={() => handleModeChange('title')}
+                  type="button"
                 >
                   📝 Buscar por título
                 </button>
@@ -290,16 +347,19 @@ const AdminPanel = () => {
                 <div className="search-box">
                   <div className="search-input-group">
                     <input
-                      type="text"
+                      type="number"
                       value={formData.tmdbId}
                       onChange={(e) => setFormData({ ...formData, tmdbId: e.target.value })}
                       placeholder="ID de TMDB (ej: 11891)"
                       disabled={loading}
+                      min="1"
+                      step="1"
                     />
-                    <button onClick={searchTMDBById} disabled={loading}>
+                    <button onClick={searchTMDBById} disabled={loading} type="button">
                       {loading ? 'Buscando...' : 'Buscar'}
                     </button>
                   </div>
+                  <small className="input-hint">Ingresa el ID numérico de TMDB</small>
                 </div>
               )}
 
@@ -311,10 +371,10 @@ const AdminPanel = () => {
                       type="text"
                       value={formData.searchTitle}
                       onChange={(e) => setFormData({ ...formData, searchTitle: e.target.value })}
-                      placeholder="Título de película o serie"
+                      placeholder="Título de película o serie (ej: Thor)"
                       disabled={loading}
                     />
-                    <button onClick={searchTMDBByTitle} disabled={loading}>
+                    <button onClick={searchTMDBByTitle} disabled={loading} type="button">
                       {loading ? 'Buscando...' : 'Buscar'}
                     </button>
                   </div>
@@ -357,11 +417,13 @@ const AdminPanel = () => {
                 </div>
               )}
 
+              {/* Vista previa del contenido seleccionado */}
               {searchResult && (
                 <div className="movie-preview-card">
-                  <img src={searchResult.data.poster_path 
-                    ? `https://image.tmdb.org/t/p/w200${searchResult.data.poster_path}` 
-                    : 'https://via.placeholder.com/200x300?text=No+Image'} 
+                  <img 
+                    src={searchResult.data.poster_path 
+                      ? `https://image.tmdb.org/t/p/w200${searchResult.data.poster_path}` 
+                      : 'https://via.placeholder.com/200x300?text=No+Image'} 
                     alt={searchResult.data.title || searchResult.data.name} 
                   />
                   <div className="preview-info">
@@ -370,13 +432,14 @@ const AdminPanel = () => {
                       <span>⭐ {searchResult.data.vote_average?.toFixed(1) || 'N/A'}/10</span>
                       <span>📅 {searchResult.data.release_date || searchResult.data.first_air_date || 'N/A'}</span>
                     </div>
+                    <p className="preview-overview">{searchResult.data.overview}</p>
                   </div>
                 </div>
               )}
 
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                  <label>Tipo de contenido</label>
+                  <label>Tipo de contenido *</label>
                   <select
                     value={formData.contentType}
                     onChange={(e) => setFormData({ ...formData, contentType: e.target.value })}
@@ -391,7 +454,7 @@ const AdminPanel = () => {
                 </div>
 
                 <div className="form-group">
-                  <label>Género</label>
+                  <label>Género *</label>
                   <select
                     value={formData.genre}
                     onChange={(e) => setFormData({ ...formData, genre: e.target.value })}
@@ -410,8 +473,14 @@ const AdminPanel = () => {
                   </select>
                 </div>
 
-                <button type="submit" className="submit-movie-btn" disabled={!searchResult}>
-                  ✅ Agregar Contenido
+                <button 
+                  type="submit" 
+                  className="submit-movie-btn" 
+                  disabled={!searchResult || loading}
+                >
+                  {!searchResult 
+                    ? '🔍 Primero busca un contenido' 
+                    : '✅ Agregar Contenido'}
                 </button>
               </form>
             </div>
@@ -425,33 +494,50 @@ const AdminPanel = () => {
               <h2>Filmoteca</h2>
               <span className="movie-count">{customMovies.length} títulos</span>
             </div>
-            <div className="movies-grid-library">
-              {customMovies.map(movie => (
-                <div key={movie.id} className="library-movie-card">
-                  <div className="movie-card-poster">
-                    <img src={movie.posterPath 
-                      ? `https://image.tmdb.org/t/p/w200${movie.posterPath}` 
-                      : 'https://via.placeholder.com/200x300?text=No+Image'} 
-                      alt={movie.title} 
-                    />
-                    <div className="movie-card-overlay">
-                      <Link to={`/movie/${movie.tmdbId}`} className="card-action-btn">👁️</Link>
-                      <button onClick={() => removeCustomMovie(movie.id)} className="card-action-btn delete">🗑️</button>
+            
+            {customMovies.length === 0 ? (
+              <div className="empty-library">
+                <p>No hay contenido en la filmoteca</p>
+                <button onClick={() => setActiveSection('add')}>
+                  Agregar primer contenido
+                </button>
+              </div>
+            ) : (
+              <div className="movies-grid-library">
+                {customMovies.map(movie => (
+                  <div key={movie.id} className="library-movie-card">
+                    <div className="movie-card-poster">
+                      <img 
+                        src={movie.posterPath 
+                          ? `https://image.tmdb.org/t/p/w200${movie.posterPath}` 
+                          : 'https://via.placeholder.com/200x300?text=No+Image'} 
+                        alt={movie.title} 
+                      />
+                      <div className="movie-card-overlay">
+                        <Link to={`/movie/${movie.tmdbId}`} className="card-action-btn">👁️</Link>
+                        <button 
+                          onClick={() => removeCustomMovie(movie.id)} 
+                          className="card-action-btn delete"
+                          title="Eliminar"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                      <div className="content-type-badge">
+                        {movie.contentType === 'pelicula' && '🎬'}
+                        {movie.contentType === 'serie' && '📺'}
+                        {movie.contentType === 'anime' && '🗾'}
+                        {movie.contentType === 'novela' && '💕'}
+                      </div>
                     </div>
-                    <div className="content-type-badge">
-                      {movie.contentType === 'pelicula' && '🎬'}
-                      {movie.contentType === 'serie' && '📺'}
-                      {movie.contentType === 'anime' && '🗾'}
-                      {movie.contentType === 'novela' && '💕'}
+                    <div className="movie-card-info">
+                      <h4>{movie.title}</h4>
+                      <span className="movie-genre-tag">{movie.genre}</span>
                     </div>
                   </div>
-                  <div className="movie-card-info">
-                    <h4>{movie.title}</h4>
-                    <span className="movie-genre-tag">{movie.genre}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
